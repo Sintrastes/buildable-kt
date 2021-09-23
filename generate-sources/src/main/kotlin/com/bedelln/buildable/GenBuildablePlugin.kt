@@ -35,29 +35,21 @@ val Meta.genBuildable: CliPlugin get() =
                     }
                     res && element.isData()
                 },
-                map = { (c, d) ->
+                map = { (c, _) ->
                     val dataClass = classAsDataClass(c)!!
-                    Transform.replace(
-                        replacing = c,
-                        newDeclaration = c.apply {
-                            messageCollector
-                                .report(CompilerMessageSeverity.ERROR, "TEST")
-                            println("------------------- Building new declaration ----------------------")
-                            addDeclaration(
-                                generatePartialClass(dataClass)
-                                    .toString()
-                                    .declaration<KtDeclaration>()
-                                    .value!!
-                            )
-                            addDeclaration(
-                                generateCtx(dataClass)
-                                    .toString()
-                                    .declaration<KtDeclaration>()
-                                    .value!!
-                            )
-                        }
-                            .scope()
-                            .syntheticScope
+
+                    messageCollector
+                        .report(CompilerMessageSeverity.ERROR, "TEST")
+
+                    Transform.newSources(
+                        """
+                            package ${dataClass.pkg}
+
+                            ${generatePartialClass(dataClass)}
+                                    
+                            ${generateCtx(dataClass)}
+                        """
+                            .file("BuildableGenerated")
                     )
                 }
             )
@@ -67,11 +59,13 @@ val Meta.genBuildable: CliPlugin get() =
 /** Helper class to convert an Element into a DataClass if it is in fact a Kotlin data class. */
 internal fun classAsDataClass(ktClass: KtClass): DataClass? =
     if (ktClass.isData()) {
+        // TODO: Grab this from the package the passed class was defined in.
+        val pkg = "com.bedelln.buildable.generated"
         val name = ktClass.name!!
         val fields = ktClass.primaryConstructor!!.valueParameters.map {
             DataClassField(it.isVarArg, it.name!!, it.typeReference!!.text)
         }
-        DataClass(name, fields)
+        DataClass(pkg, name, fields)
     } else {
         null
     }
@@ -79,7 +73,7 @@ internal fun classAsDataClass(ktClass: KtClass): DataClass? =
 /** Given a data class, generate it's "Partial" implementation. */
 internal fun generatePartialClass(dataClass: DataClass): TypeSpec = run {
     println("------------------------ GENERATING PARTIAL CLASS ----------------")
-    TypeSpec.classBuilder("Partial")
+    TypeSpec.classBuilder("Partial${dataClass.name}")
         .addFunction(
             generateCombineOperation(dataClass)
         )
@@ -101,7 +95,7 @@ internal fun generateCombineOperation(dataClass: DataClass): FunSpec =
         .addCode(
             CodeBlock.builder()
                 .addStatement("""
-                    return Partial(
+                    return Partial${dataClass.name}(
                         ${
                             dataClass.fields.map { field ->
                                 "${field.name} ?: other.${field.name}"
@@ -136,13 +130,13 @@ internal fun generateBuildOperation(dataClass: DataClass): FunSpec =
 
 /** Given a data class, generate it's ctx class. */
 internal fun generateCtx(dataClass: DataClass): TypeSpec =
-    TypeSpec.objectBuilder("Ctx")
+    TypeSpec.objectBuilder("${dataClass.name}Ctx")
         .addProperty(
             PropertySpec.builder("empty", ClassName("","Partial"))
                 .initializer(
                     CodeBlock.builder()
                         .addStatement(
-                            "Partial(${dataClass.fields.map { "null" }.joinToString(",")})"
+                            "Partial${dataClass.name}(${dataClass.fields.map { "null" }.joinToString(",")})"
                         )
                         .build()
                 )
@@ -152,7 +146,11 @@ internal fun generateCtx(dataClass: DataClass): TypeSpec =
 
 /** Abstract representation of a Kotlin data class. */
 internal data class DataClass(
+    /** The package the class was declared in. */
+    val pkg: String,
+    /** The name of the class. */
     val name: String,
+    /** List of fields of the data class. */
     val fields: List<DataClassField>
 )
 
