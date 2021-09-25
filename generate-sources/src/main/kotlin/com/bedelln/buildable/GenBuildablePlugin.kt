@@ -23,6 +23,12 @@ class GenBuildablePlugin : Meta {
 val Meta.genBuildable: CliPlugin get() =
     "GenBuildable" {
         val messageCollector = this.messageCollector!!
+
+        messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            "first"
+        )
+
         meta(
             classDeclaration(
                 ctx = this,
@@ -38,8 +44,10 @@ val Meta.genBuildable: CliPlugin get() =
                 map = { (c, _) ->
                     val dataClass = classAsDataClass(c)!!
 
-                    messageCollector
-                        .report(CompilerMessageSeverity.ERROR, "TEST")
+                    messageCollector.report(
+                        CompilerMessageSeverity.ERROR,
+                        dataClass.pkg
+                    )
 
                     Transform.newSources(
                         """
