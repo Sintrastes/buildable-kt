@@ -81,10 +81,10 @@ interface Buildable<A, P: Buildable.Partial<A, P>> {
 
 /** A generic traditional OOP "Builder pattern" implementation for
  * implementors of the buildable interface. */
-class BuildableBuilder<A,B,P>(ctx: Buildable.Ctx<A,P>): Builder<A>
+class BuildableBuilder<A,P>(ctx: Buildable.Ctx<A,P>): Builder<A>
   where P: Buildable.Partial<A,P> {
     private var partialData: P = ctx.empty
-    fun set(field: Buildable.Field<A,B,P>, value: B) {
+    fun <B> set(field: Buildable.Field<A,B,P>, value: B) {
         partialData = field.partial.set(partialData, value)
     }
 
