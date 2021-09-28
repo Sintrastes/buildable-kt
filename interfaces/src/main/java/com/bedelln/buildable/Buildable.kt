@@ -84,8 +84,9 @@ interface Buildable<A, P: Buildable.Partial<A, P>> {
 class BuildableBuilder<A,P>(ctx: Buildable.Ctx<A,P>): Builder<A>
   where P: Buildable.Partial<A,P> {
     private var partialData: P = ctx.empty
-    fun <B> set(field: Buildable.Field<A,B,P>, value: B) {
+    fun <B> set(field: Buildable.Field<A,B,P>, value: B): BuildableBuilder<A,P> {
         partialData = field.partial.set(partialData, value)
+        return this
     }
 
     override fun build(): A? {

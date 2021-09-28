@@ -105,7 +105,7 @@ val Meta.genBuildable: CliPlugin
 
                         Transform.newSources(
                             packageText
-                                .file("BuildableGenerated")
+                                .file("BuildableGenerated","/generated/main/java/com/bedelln/example")
                         )
                     }
                 )
@@ -137,16 +137,20 @@ internal fun generateField(dataClass: DataClass, fieldNo: Int): PropertySpec = r
             )
     )
         .receiver(ClassName("", dataClass.name, "Companion"))
-        .initializer(
-            CodeBlock.builder()
-                .addStatement(
-                    """
-                        object: Buildable.Field<${dataClass.name}, ${field.typeName}, Partial${dataClass.name}> {
+        .getter(
+            FunSpec.getterBuilder()
+                .addCode(
+                    CodeBlock.builder()
+                        .addStatement(
+                            """
+                        return object: Buildable.Field<${dataClass.name}, ${field.typeName}, Partial${dataClass.name}> {
                             ${generatePut(dataClass, field)}
                             ${generateGet(dataClass, field)}
                             ${generatePartial(dataClass, field)}
                         }
                     """.trimIndent()
+                        )
+                        .build()
                 )
                 .build()
         )
@@ -159,6 +163,26 @@ internal fun generatePut(dataClass: DataClass, field: DataClassField): FunSpec =
         .addParameter("source", ClassName("", dataClass.name))
         .addParameter("focus", ClassName("", field.typeName))
         .returns(ClassName("", dataClass.name))
+        .addCode(
+            CodeBlock.builder()
+                .addStatement(
+                    """
+                        return ${dataClass.name}(
+                            ${
+                        dataClass.fields.map {
+                            if (it.name == field.name) {
+                                "focus"
+                            } else {
+                                "source.${it.name}"
+                            }
+                        }
+                            .joinToString(",")
+                    }
+                        )
+                    """.trimIndent()
+                )
+                .build()
+        )
         .build()
 
 internal fun generateGet(dataClass: DataClass, field: DataClassField): FunSpec =
@@ -192,7 +216,7 @@ internal fun generatePartial(dataClass: DataClass, field: DataClassField): Prope
                     CodeBlock.builder()
                         .addStatement(
                             """
-                        object: Lens<Partial${dataClass.name}, ${field.typeName}?> {
+                        return object: Lens<Partial${dataClass.name}, ${field.typeName}?> {
                             ${generatePartialGet(dataClass, field)}
                             ${generatePartialPut(dataClass, field)}
                         }
@@ -207,7 +231,8 @@ internal fun generatePartial(dataClass: DataClass, field: DataClassField): Prope
 internal fun generatePartialGet(dataClass: DataClass, field: DataClassField): FunSpec =
     FunSpec.builder("get")
         .addModifiers(KModifier.OVERRIDE)
-        .returns(ClassName("", field.typeName).copy(true))
+        .addParameter("source", ClassName("", "Partial${dataClass.name}"))
+        .returns(ClassName("", "${field.typeName}").copy(true))
         .addCode(
             CodeBlock.builder()
                 .addStatement(
@@ -225,14 +250,37 @@ internal fun generatePartialPut(dataClass: DataClass, field: DataClassField): Fu
         .addParameter("source", ClassName("", "Partial${dataClass.name}"))
         .addParameter("focus", ClassName("", field.typeName).copy(true))
         .returns(ClassName("", "Partial${dataClass.name}"))
+        .addCode(
+            CodeBlock.builder()
+                .addStatement(
+                    """
+                        return Partial${dataClass.name}(
+                            ${
+                        dataClass.fields.map {
+                            if (it.name == field.name) {
+                                "focus"
+                            } else {
+                                "source.${it.name}"
+                            }
+                        }
+                            .joinToString(",")
+                    }
+                        )
+                    """.trimIndent()
+                )
+                .build()
+        )
         .build()
 
 internal fun generateBuilderExtension(dataClass: DataClass): FunSpec =
     FunSpec.builder("builder")
         .receiver(ClassName("", dataClass.name, "Companion"))
         .returns(
-            ClassName("", "Builder")
-                .parameterizedBy(ClassName("", dataClass.name))
+            ClassName("", "BuildableBuilder")
+                .parameterizedBy(
+                    ClassName("", dataClass.name),
+                    ClassName("", "Partial${dataClass.name}")
+                )
         )
         .addCode(
             CodeBlock.builder()
@@ -394,7 +442,7 @@ internal fun generateCtx(dataClass: DataClass): TypeSpec =
                     CodeBlock.builder()
                         .addStatement(
                             """
-                                object: Buildable<${dataClass.name}, Partial${dataClass.name}> {
+                                return object: Buildable<${dataClass.name}, Partial${dataClass.name}> {
                                     ${generateAsPartial(dataClass)}
                                 }
                             """.trimIndent()
