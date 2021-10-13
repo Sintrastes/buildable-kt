@@ -12,9 +12,9 @@ compileKotlin {
     }
 }
 
-// java.sourceSets["main"].java {
-//     srcDir("build/generated/main/java")
-// }
+java.sourceSets["main"].java {
+    srcDir("build/generated/main/java")
+}
 
 dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.21'

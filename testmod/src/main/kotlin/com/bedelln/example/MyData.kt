@@ -1,4 +1,3 @@
-
 package com.bedelln.example
 
 import arrow.optics.Lens
