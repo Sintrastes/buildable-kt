@@ -1,5 +1,7 @@
 # buildable-kt
 `buildable-kt` is a small library for deriving a generic "buildable" implementation for Kotlin data classes.
+ For motivation and introduction to the basics of the library, read on! Want to get started? You might
+ want to [skip ahead](#getting-started).
 
 # Introduction
 
