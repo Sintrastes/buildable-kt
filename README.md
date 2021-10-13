@@ -201,7 +201,7 @@ TODO
 
 # Getting started
 
-`buildable-kt` is currently distributed as a Kotlin compiler plugin, built uisng [arrow-meta]().
+`buildable-kt` is currently distributed as a Kotlin compiler plugin, built uisng [arrow-meta](https://meta.arrow-kt.io/).
  In the future, to give the user of this library some options in how it is used, we may consider
  also distributing it as a kapt plugin (PRs welcome!).
 
