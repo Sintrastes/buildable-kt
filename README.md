@@ -103,7 +103,7 @@ In particular
  are many possible solutions for solving the problem that `buildable-kt`
  solves. For instance, `Applicatives` or `Monad`s can be used to solve
  similar problems of building declarative user interfaces manipulating
- a particular piece of data.
+ a particular piece of data (for instance, see how [Yesod](https://www.yesodweb.com/book/forms) handles forms).
 
 Whereas these approaches are definitely
  [_possible_](https://github.com/KindedJ/KindedJ) to emulate in Kotlin, and would certainly be more type-safe, we decided to go a different
