@@ -49,13 +49,24 @@ There may be more general uses for these classes, but as far as this
 
 ## Fields
 
-TODO
+`buildable-kt` builds off of [arrow-optics](https://arrow-kt.io/docs/optics/) in order to provide first class accessors to both the fields of a data class, as well as the corresponding field in the partial version of that data class. This as accomplished with the `Buildable.Field` interface, which is essentially just a [lens](https://arrow-kt.io/docs/optics/lens/) on both a data type, and it's partial variant:
 
-## Usages
+```kotlin
+interface Buildable<A, P: Buildable.Partial<A, P>> {
+    ...
+    
+    /** A field of a buildable data class. Can act either as a
+     * regular lens, or as a lens on the "partial" data type for
+     * the buildable implementation. */
+    interface Field<A,B,P: Partial<A,P>>: Lens<A, B> {
+        val partial: Lens<P, B?>
+    }
+}
+```
 
-TODO
+Annotating a data class with `@GenBuildable` will generate a `Buildable.Field` on the companion object of the annotated class, with the same name as the field.
 
-## Example
+## Basic Usage Example
 
 ```kotlin
 // Data definition:
@@ -92,7 +103,7 @@ In particular
  are many possible solutions for solving the problem that `buildable-kt`
  solves. For instance, `Applicatives` or `Monad`s can be used to solve
  similar problems of building declarative user interfaces manipulating
- a particular piece of data.
+ a particular piece of data (for instance, see how [Yesod](https://www.yesodweb.com/book/forms) handles forms).
 
 Whereas these approaches are definitely
  [_possible_](https://github.com/KindedJ/KindedJ) to emulate in Kotlin, and would certainly be more type-safe, we decided to go a different
@@ -195,9 +206,47 @@ In the future, since `buildable-kt` is a _compiler plugin_, it may even be possi
  would be to write an appropriate rule for a static analyzer like [detekt](https://github.com/detekt/detekt) to report such mistakes
  as warnings.
  
-## Aside: Higher-kinded data
+## Higher-kinded data for options parsing
 
-TODO
+As mentioned before, `buildable-kt` is based on the idea of _higher-kinded data_. Thus, one of the potential use cases for this library beyond as a utility for writing and using UI DSLs is for [options parsing](https://chrispenner.ca/posts/hkd-options). For example, imagine that you are building an application with multiple possible sources of configuration data. For instance, you might have command line arguments, maybe a configuration file or two somewhere, and perhaps also some behavior that is controlled by environment variables.
+
+Furthermore, let's assume that some of these data sources of configuration options _overlap_. For instance, you might have some options coming from a configuration file that could be overriden by an explicit command line argument when starting your application. Finally, let's also say that these sources of configuration data are not nescesarialy complete -- for instance, you wouldn't want to be forced to specify _all_ of your configuration options at the command line each time you run your application -- that kind of defeats the purpose of using config files and environment variables.
+
+If you have some functions for parsing configuration data from each of these data sources, you can do the following:
+
+```kotlin
+
+@GenBuildable
+data MyAppConfig(
+    val useLogging: Boolean,
+    val useColorCodes: Boolean
+    val userName: String,
+    val password: String
+) {
+    companion object { }
+}
+
+fun main(args: Array<String>) {
+    
+    val cmdOpts: PartialMyAppConfig = parseCmdOpts(args)
+    val envOpts: PartialMyAppConfig = parseEnvironmentVariables()
+    val configFileOpts: PartialMyAppConfig = parseConfigFileOpts(CONFIG_FILE)
+    
+    val completeOptions: MyAppConfig = envOpts
+        .combine(configFileOpts)
+        .combine(cmdOpts)
+        .build()
+            ?: run { 
+                printLn "Could not parse configuration options."
+                return@main
+            }
+    
+    with (completeOptions) {
+        ...
+    }
+}
+
+```
 
 # Getting started
 
