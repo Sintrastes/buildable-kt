@@ -1,8 +1,14 @@
 
-plugins {
-    id "org.jetbrains.kotlin.jvm"
+dependencies {
+    classpath "io.arrow-kt:arrow-proofs-gradle-plugin:<snapshot-version>"
 }
 
+plugins {
+    id "org.jetbrains.kotlin.jvm"
+    id "io.github.sintrastes.buildable-kt"
+}
+
+/*
 compileKotlin {
     kotlinOptions {
         freeCompilerArgs += [
@@ -11,6 +17,7 @@ compileKotlin {
         ]
     }
 }
+ */
 
 java.sourceSets["main"].java {
     srcDir("build/generated/main/java")
@@ -20,13 +27,13 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.21'
 
     // Arrow meta
-    compileOnly "org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.21"
-    compileOnly "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
+    // compileOnly "org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.21"
+    // compileOnly "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
     // Code generation library for kotlin, highly recommended
 
     // Arrow
-    implementation "io.arrow-kt:arrow-core:$ARROW_VERSION"
-    implementation "io.arrow-kt:arrow-optics:$ARROW_VERSION"
+    // implementation "io.arrow-kt:arrow-core:$ARROW_VERSION"
+    // implementation "io.arrow-kt:arrow-optics:$ARROW_VERSION"
 
     implementation project(":interfaces")
 }

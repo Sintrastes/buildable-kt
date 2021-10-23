@@ -26,3 +26,22 @@ jar {
         })
     )
 }
+
+/*
+afterEvaluate {
+    publishing {
+        publications {
+            mavenPublication(MavenPublication) {
+                from components.java
+                artifactId 'buildable-kt-plugin'
+                artifacts = [jar, sourceJar, javadocJar]
+                pom {
+                    name = 'buildable-kt-plugin'
+                    description = 'Kotlin compiler plugin for generating implementatons of the Buildable interface for buildable-kt.'
+                    version = VERSION_NAME
+                }
+            }
+        }
+    }
+}
+ */

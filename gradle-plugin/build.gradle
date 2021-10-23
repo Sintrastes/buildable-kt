@@ -1,0 +1,61 @@
+import java.nio.file.Paths
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'java-gradle-plugin'
+    id 'com.gradle.plugin-publish' version "$GRADLE_PLUGIN_PUBLISH_VERSION"
+    // id "org.jlleitschuh.gradle.ktlint"
+}
+
+group = GROUP
+version = VERSION_NAME
+def pluginId = 'io.github.sintrastes.buildable-kt'
+
+processResources {
+    duplicatesStrategy 'warn'
+}
+
+dependencies {
+    compileOnly project(":libs:gradle-plugin-commons")
+    runtimeOnly "io.github.classgraph:classgraph:$CLASS_GRAPH_VERSION"
+
+    // Necessary during plugin execution to be found and added for compilation
+    api "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
+    api project(':buildable-kt-plugin')
+}
+
+// apply from: file("${rootDir}/${SUBPROJECT}")
+
+gradlePlugin {
+    plugins {
+        arrow {
+            id = pluginId
+            implementationClass = "com.bedelln.plugin.gradle.BuildableKtGradlePlugin"
+        }
+    }
+}
+
+pluginBundle {
+    website = "https://github.com/Sintrastes/buildable-kt"
+    vcsUrl = "https://github.com/Sintrastes/buildable-kt"
+    description = "A compiler plugin for deriving a buildable interface for Kotlin data classes."
+    tags = ["kotlin", "compiler", "arrow", "plugin", "meta", "dsl"]
+
+    plugins {
+        arrow {
+            displayName = "Buildable-kt Gradle Plugin"
+        }
+    }
+}
+
+tasks.whenTaskAdded { task ->
+    if (task.name.matches('.*Plugin.*MavenPublication.*')) { task.enabled = false }
+}
+
+jar {
+    from(
+            zipTree(sourceSets.main.compileClasspath.find {
+                it.absolutePath.contains(Paths.get("gradle-plugin-commons").toString())
+            })
+    )
+}

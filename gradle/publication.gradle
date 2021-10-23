@@ -1,0 +1,76 @@
+
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+afterEvaluate {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                version = VERSION_NAME
+
+                artifact sourcesJar
+                artifact javadocJar
+                from components.java
+
+                pom {
+                    name = "buildable-kt"
+                    description = "test"
+                    url = "http://github.com/Sintrastes/buildable-kt"
+
+                    scm {
+                        connection = 'scm:git:git://github.com/Sintrastes/buildable-kt.git'
+                        developerConnection = 'scm:git:ssh://github.com:Sintrastes/Sintrastes/buildable-kt.git'
+                        url = 'https://github.com/PAR-Government/partech-metadata-utils'
+                    }
+                    licenses {
+                        license {
+                            name = "MIT"
+                            url = "https://opensource.org/licenses/MIT"
+                        }
+                    }
+                    developers {
+                        developer {
+                            name = 'Nathan Bedell'
+                            email = 'nbedell@tulane.edu'
+                        }
+                    }
+                }
+            }
+        }
+        // repositories {
+        //     maven {
+        //         credentials {
+        //             username "$System.env.SONATYPE_USER"
+        //             password "$System.env.SONATYPE_PWD"
+        //         }
+        //         url = VERSION_NAME.endsWith('SNAPSHOT') ? SNAPSHOT_REPOSITORY : RELEASE_REPOSITORY
+        //    }
+        // }
+    }
+
+    // Guide: https://docs.gradle.org/current/userguide/signing_plugin.html
+    if (project.hasProperty("signingKey") && project.hasProperty("signingPassword")) {
+        signing {
+            def signingKey = findProperty("signingKey")
+            def signingPassword = findProperty("signingPassword")
+            useInMemoryPgpKeys(signingKey, signingPassword)
+
+            sign publishing.publications.mavenJava
+        }
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    //noinspection GroovyAccessibility //alternatively replace this with archiveClassifier.set('...')
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource, 'build/generated/source/kapt/main', 'build/generated/source/kaptKotlin/main'
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    //noinspection GroovyAccessibility //alternatively replace this with archiveClassifier.set('...')
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}

@@ -1,15 +1,82 @@
 
-plugins {
-    id "org.jetbrains.kotlin.jvm" version "$KOTLIN_VERSION" apply false
+buildscript {
+    ext.GROUP = "io.github.sintrastes"
+    ext.VERSION_NAME = "1.0-SNAPSHOT"
+    ext.CLASS_GRAPH_VERSION = "4.8.47"
 }
 
-allprojects {
+plugins {
+    id "java-library"
+    id "org.jetbrains.kotlin.jvm" version "$KOTLIN_VERSION" apply false
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = GROUP
+
+subprojects {
     repositories {
         mavenCentral()
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+        mavenLocal()
         google()
+    }
+
+    publishing {
+        publications {
+            mavenPublication(MavenPublication) {
+                groupId 'com.project'
+                artifactId 'buildable-kt'
+
+                pom {
+                    name = 'buildable-kt'
+                    description = 'Interfaces for Kotlin classes that can be built up from partial data.'
+                    version = VERSION_NAME
+                    url = 'https://github.com/Sintrastes/buildable-kt'
+
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                name = 'sonatype'
+                def releasesRepoUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+                def snapshotsRepoUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                // TODO: Need to restore this when I get these credentials.
+                // credentials {
+                //     username "$mavenUser"
+                //      password "$mavenPassword"
+                // }
+            }
+        }
     }
 }
 
-group = "com.bedelln"
-version = "1.0-SNAPSHOT"
+// Publication
+configure(subprojects - project(":gradle-plugin")  - project(":libs:gradle-plugin-commons") - project(":libs")
+) {
+    group = GROUP
+    version = VERSION_NAME
+}
+
+// JVM Publication
+configure(subprojects -
+        project(":gradle-plugin") - project(":libs:gradle-plugin-commons") - project(":libs")
+) {
+    afterEvaluate {
+        jar {
+            archiveBaseName = POM_ARTIFACT_ID
+            manifest {
+                attributes["Specification-Title"] = project.name
+                attributes["Specification-Version"] = project.version
+                attributes["Implementation-Title"] = POM_NAME
+                attributes["Implementation-Version"] = project.version
+            }
+        }
+    }
+    apply from: "${rootDir}/gradle/publication.gradle"
+}
+
+apply from: "${rootDir}/gradle/publication.gradle"

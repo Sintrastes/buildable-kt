@@ -240,3 +240,9 @@ dependencies {
 
 ```
 
+Licensing
+---------
+
+The source code of buildable-kt is licensed under the [MIT License](LICENSE), 
+ the gradle build files, which were partially adapted from the build files for
+ [arrow-meta], are licensed under the [Apache License](LICENSE-arrow).
