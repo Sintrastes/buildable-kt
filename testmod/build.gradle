@@ -1,44 +1,50 @@
 
-dependencies {
-    classpath "io.arrow-kt:arrow-proofs-gradle-plugin:<snapshot-version>"
-}
-
 plugins {
     id "org.jetbrains.kotlin.jvm"
-    id "io.github.sintrastes.buildable-kt"
+    // id "io.github.sintrastes.buildable-kt"
 }
 
-/*
+repositories {
+    mavenCentral()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+}
+
+apply plugin: 'kotlin-kapt'
+
+//dependencies {
+//    classpath "io.arrow-kt:arrow-proofs-gradle-plugin:1.5.31-SNAPSHOT"
+//}
+
 compileKotlin {
     kotlinOptions {
         freeCompilerArgs += [
-                "-Xplugin=${rootDir}/generate-sources/build/libs/generate-sources-all.jar",
+                "-Xplugin=${rootDir}/buildable-kt-plugin/build/libs/buildable-kt-plugin-1.0-SNAPSHOT-all.jar",
                 "-P", "plugin:arrow.meta.plugin.compiler:generatedSrcOutputDir=${buildDir}"
         ]
     }
 }
- */
 
 java.sourceSets["main"].java {
-    srcDir("build/generated/main/java")
+    srcDir("build/generated/main/kotlin")
 }
 
 dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.21'
 
     // Arrow meta
-    // compileOnly "org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.21"
-    // compileOnly "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
+    implementation "org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.0"
+    implementation "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
     // Code generation library for kotlin, highly recommended
 
     // Arrow
-    // implementation "io.arrow-kt:arrow-core:$ARROW_VERSION"
-    // implementation "io.arrow-kt:arrow-optics:$ARROW_VERSION"
+    implementation "io.arrow-kt:arrow-core:$ARROW_VERSION"
+    implementation "io.arrow-kt:arrow-optics:$ARROW_VERSION"
+    kapt "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
 
     implementation project(":interfaces")
 }
 
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
-    compileTask -> compileTask.dependsOn ":generate-sources:assemble"
+    compileTask -> compileTask.dependsOn ":buildable-kt-plugin:assemble"
 }

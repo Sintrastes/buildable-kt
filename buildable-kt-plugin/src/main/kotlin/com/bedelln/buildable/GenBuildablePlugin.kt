@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.calls.callUtil.createLookupLocation
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.source.toSourceElement
 import kotlin.contracts.ExperimentalContracts
 
@@ -35,10 +36,6 @@ val Meta.genBuildable: CliPlugin
                         var res = false
                         element.annotationEntries.forEach { annotation ->
                             annotationEntryVisitor {
-                                messageCollector.report(
-                                    CompilerMessageSeverity.WARNING,
-                                    "in match: ${it.shortName}."
-                                )
                                 if (it.shortName?.identifier == "GenBuildable") {
                                     res = true
                                 }
@@ -47,12 +44,13 @@ val Meta.genBuildable: CliPlugin
                         }
                         res
                     },
-                    map = { (c, _) ->
+                    map = { (c, d) ->
                         if (!c.isData()) {
                             c.createLookupLocation()?.location?.let { loc ->
                                 messageCollector.report(
                                     CompilerMessageSeverity.STRONG_WARNING,
-                                    "@GenBuildable can only be applied to data classes. No sources will be generated for ${c.name}.",
+                                    "@GenBuildable can only be applied to data classes. " +
+                                            "No sources will be generated for ${c.name}.",
                                     object : CompilerMessageSourceLocation {
                                         override val path = loc.filePath
                                         override val line = loc.position.line
@@ -68,7 +66,8 @@ val Meta.genBuildable: CliPlugin
                             c.createLookupLocation()?.location?.let { loc ->
                                 messageCollector.report(
                                     CompilerMessageSeverity.STRONG_WARNING,
-                                    "@GenBuildable can only be applied to classes with companion objects. No sources will be generated for ${c.name}.",
+                                    "@GenBuildable can only be applied to classes with companion objects. " +
+                                            "No sources will be generated for ${c.name}.",
                                     object : CompilerMessageSourceLocation {
                                         override val path = loc.filePath
                                         override val line = loc.position.line
@@ -80,50 +79,40 @@ val Meta.genBuildable: CliPlugin
                             return@classDeclaration Transform.empty
                         }
 
-                        val dataClass = classAsDataClass(c)!!
+                        val dataClass = classAsDataClass(module!!, c)!!
 
                         val packageText =
                             """
-                            package ${dataClass.pkg}
-                            
-                            import com.bedelln.buildable.*
-                            import arrow.optics.Lens
-                            
-                            ${generatePartialClass(dataClass)}                           
-                            ${generateCtx(dataClass)}
-                            ${generateBuilderExtension(dataClass)}
-                            ${generateBuildableExtension(dataClass)}
-                            ${
+                            |package ${dataClass.pkg}
+                            |
+                            |import com.bedelln.buildable.*
+                            |import arrow.optics.Lens
+                            |
+                            |${generatePartialClass(dataClass)}                           
+                            |${generateCtx(dataClass)}
+                            |${generateBuilderExtension(dataClass)}
+                            |${generateBuildableExtension(dataClass)}
+                            |${
                                 dataClass.fields.mapIndexed { i, _ ->
                                     generateField(dataClass, i)
                                         .toString()
                                 }
                                     .joinToString("\n")
                             }
-                        """
+                            """
                                 .trimIndent()
 
                         Transform.newSources(
                             packageText
-                                .file("BuildableGenerated","/generated/main/java/com/bedelln/example")
+                                .file(
+                                    "${dataClass.name}Buildable",
+                                    "/generated/main/kotlin/${dataClass.pkg.replace('.','/')}"
+                                )
                         )
                     }
                 )
             )
         }
-
-/** Helper class to convert an Element into a DataClass if it is in fact a Kotlin data class. */
-internal fun classAsDataClass(ktClass: KtClass): DataClass? =
-    if (ktClass.isData()) {
-        val pkgName = ktClass.containingKtFile.packageFqName.toString()
-        val name = ktClass.name!!
-        val fields = ktClass.primaryConstructor!!.valueParameters.map {
-            DataClassField(it.isVarArg, it.name!!, it.typeReference!!.text)
-        }
-        DataClass(pkgName, name, fields)
-    } else {
-        null
-    }
 
 internal fun generateField(dataClass: DataClass, fieldNo: Int): PropertySpec = run {
     val field = dataClass.fields[fieldNo]
@@ -132,7 +121,7 @@ internal fun generateField(dataClass: DataClass, fieldNo: Int): PropertySpec = r
         ClassName("", "Buildable", "Field")
             .parameterizedBy(
                 ClassName("", dataClass.name),
-                ClassName("", field.typeName),
+                field.typeName,
                 ClassName("", "Partial${dataClass.name}")
             )
     )
@@ -143,12 +132,12 @@ internal fun generateField(dataClass: DataClass, fieldNo: Int): PropertySpec = r
                     CodeBlock.builder()
                         .addStatement(
                             """
-                        return object: Buildable.Field<${dataClass.name}, ${field.typeName}, Partial${dataClass.name}> {
-                            ${generatePut(dataClass, field)}
-                            ${generateGet(dataClass, field)}
-                            ${generatePartial(dataClass, field)}
-                        }
-                    """.trimIndent()
+                            |return object: Buildable.Field<${dataClass.name}, ${field.typeName}, Partial${dataClass.name}> {
+                            |${generatePut(dataClass, field)}
+                            |${generateGet(dataClass, field)}
+                            |${generatePartial(dataClass, field)}
+                            |}
+                            """.trimIndent()
                         )
                         .build()
                 )
@@ -161,7 +150,7 @@ internal fun generatePut(dataClass: DataClass, field: DataClassField): FunSpec =
     FunSpec.builder("set")
         .addModifiers(KModifier.OVERRIDE)
         .addParameter("source", ClassName("", dataClass.name))
-        .addParameter("focus", ClassName("", field.typeName))
+        .addParameter("focus", field.typeName)
         .returns(ClassName("", dataClass.name))
         .addCode(
             CodeBlock.builder()
@@ -189,7 +178,7 @@ internal fun generateGet(dataClass: DataClass, field: DataClassField): FunSpec =
     FunSpec.builder("get")
         .addModifiers(KModifier.OVERRIDE)
         .addParameter("source", ClassName("", dataClass.name))
-        .returns(ClassName("", field.typeName))
+        .returns(field.typeName)
         .addCode(
             CodeBlock.builder()
                 .addStatement(
@@ -206,7 +195,7 @@ internal fun generatePartial(dataClass: DataClass, field: DataClassField): Prope
         "partial", ClassName("", "Lens")
             .parameterizedBy(
                 ClassName("", "Partial${dataClass.name}"),
-                ClassName("", field.typeName).copy(true)
+                field.typeName.copy(true)
             )
     )
         .addModifiers(KModifier.OVERRIDE)
@@ -216,10 +205,10 @@ internal fun generatePartial(dataClass: DataClass, field: DataClassField): Prope
                     CodeBlock.builder()
                         .addStatement(
                             """
-                        return object: Lens<Partial${dataClass.name}, ${field.typeName}?> {
-                            ${generatePartialGet(dataClass, field)}
-                            ${generatePartialPut(dataClass, field)}
-                        }
+                        |return object: Lens<Partial${dataClass.name}, ${field.typeName}?> {
+                        |    ${generatePartialGet(dataClass, field)}
+                        |    ${generatePartialPut(dataClass, field)}
+                        |}
                     """.trimIndent()
                         )
                         .build()
@@ -232,7 +221,7 @@ internal fun generatePartialGet(dataClass: DataClass, field: DataClassField): Fu
     FunSpec.builder("get")
         .addModifiers(KModifier.OVERRIDE)
         .addParameter("source", ClassName("", "Partial${dataClass.name}"))
-        .returns(ClassName("", "${field.typeName}").copy(true))
+        .returns(field.typeName.copy(true))
         .addCode(
             CodeBlock.builder()
                 .addStatement(
@@ -248,7 +237,7 @@ internal fun generatePartialPut(dataClass: DataClass, field: DataClassField): Fu
     FunSpec.builder("set")
         .addModifiers(KModifier.OVERRIDE)
         .addParameter("source", ClassName("", "Partial${dataClass.name}"))
-        .addParameter("focus", ClassName("", field.typeName).copy(true))
+        .addParameter("focus", field.typeName.copy(true))
         .returns(ClassName("", "Partial${dataClass.name}"))
         .addCode(
             CodeBlock.builder()
@@ -325,7 +314,7 @@ internal fun generatePartialClass(dataClass: DataClass): TypeSpec = run {
                         addParameter(
                             ParameterSpec.builder(
                                 field.name,
-                                ClassName("", field.typeName)
+                                field.typeName
                                     .copy(true)
                             )
                                 .build()
@@ -337,7 +326,7 @@ internal fun generatePartialClass(dataClass: DataClass): TypeSpec = run {
         .apply {
             for (field in dataClass.fields) {
                 addProperty(
-                    PropertySpec.builder(field.name, ClassName("", field.typeName).copy(true))
+                    PropertySpec.builder(field.name, field.typeName.copy(true))
                         .initializer(field.name)
                         .build()
                 )
@@ -394,11 +383,11 @@ internal fun generateBuildOperation(dataClass: DataClass): FunSpec =
             CodeBlock.builder()
                 .addStatement(
                     """
-                        return if(${dataClass.fields.map { field -> "${field.name} != null" }.joinToString(" && ")}) {
-                            ${dataClass.name}(${dataClass.fields.map { field -> "${field.name}!!" }.joinToString(",")})
-                        } else {
-                            null
-                        }
+                        |return if(${dataClass.fields.map { field -> "${field.name} != null" }.joinToString(" && ")}) {
+                        |    ${dataClass.name}(${dataClass.fields.map { field -> "${field.name}!!" }.joinToString(",")})
+                        |} else {
+                        |    null
+                        |}
                     """.trimIndent()
                 )
                 .build()
@@ -442,9 +431,9 @@ internal fun generateCtx(dataClass: DataClass): TypeSpec =
                     CodeBlock.builder()
                         .addStatement(
                             """
-                                return object: Buildable<${dataClass.name}, Partial${dataClass.name}> {
-                                    ${generateAsPartial(dataClass)}
-                                }
+                                |return object: Buildable<${dataClass.name}, Partial${dataClass.name}> {
+                                |    ${generateAsPartial(dataClass)}
+                                |}
                             """.trimIndent()
                         )
                         .build()
@@ -461,28 +450,11 @@ internal fun generateAsPartial(dataClass: DataClass): FunSpec =
             CodeBlock.builder()
                 .addStatement(
                     """
-                        return Partial${dataClass.name}(
-                            ${dataClass.fields.map { it.name }.joinToString(",")}
-                        )
+                        |return Partial${dataClass.name}(
+                        |    ${dataClass.fields.map { it.name }.joinToString(",")}
+                        |)
                     """.trimIndent()
                 )
                 .build()
         )
         .build()
-
-/** Abstract representation of a Kotlin data class. */
-internal data class DataClass(
-    /** The package the class was declared in. */
-    val pkg: String,
-    /** The name of the class. */
-    val name: String,
-    /** List of fields of the data class. */
-    val fields: List<DataClassField>
-)
-
-/** Abstract representation of a Kotlin data class field. */
-internal data class DataClassField(
-    val isVar: Boolean,
-    val name: String,
-    val typeName: String
-)

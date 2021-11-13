@@ -64,6 +64,7 @@ configure(subprojects - project(":gradle-plugin")  - project(":libs:gradle-plugi
 // JVM Publication
 configure(subprojects -
         project(":gradle-plugin") - project(":libs:gradle-plugin-commons") - project(":libs")
+        - project(":testmod")
 ) {
     afterEvaluate {
         jar {
