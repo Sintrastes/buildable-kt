@@ -8,11 +8,14 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.0'
 
     implementation 'com.squareup:kotlinpoet:1.10.1'
+    implementation("com.github.h0tk3y.betterParse:better-parse:0.4.3")
     implementation "com.squareup.anvil:compiler-utils:2.3.9"
 
     // Arrow meta
     implementation "org.jetbrains.kotlin:kotlin-compiler-embeddable:1.5.0"
     implementation "io.arrow-kt:arrow-meta:1.5.0-SNAPSHOT"
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 jar {
