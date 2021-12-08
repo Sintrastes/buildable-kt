@@ -1,5 +1,9 @@
 package com.bedelln.example
 
+import com.bedelln.example.test.PartialNested
+import com.bedelln.example.test.Scope1
+import com.bedelln.example.test.buildable
+
 fun main() {
     // Example using the generated idiomatic generic builder
     // for MyData.
