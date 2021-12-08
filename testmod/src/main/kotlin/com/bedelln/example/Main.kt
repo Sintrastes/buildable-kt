@@ -3,7 +3,6 @@ package com.bedelln.example
 fun main() {
     // Example using the generated idiomatic generic builder
     // for MyData.
-    /*
     val test = MyData.builder()
         .set(MyData.arg1, "test")
         .set(MyData.arg2, 42)
@@ -19,5 +18,4 @@ fun main() {
     }
 
     println("Test complete: $test2")
-    */
 }
