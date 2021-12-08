@@ -14,7 +14,7 @@ object Scope1 {
 }
 
 class Scope2 {
-    // @GenBuildable
+    @GenBuildable
     data class Nested(
        val arg1: Int,
        val arg2: List<Pair<Double, Int>>

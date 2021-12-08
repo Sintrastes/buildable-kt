@@ -104,7 +104,8 @@ val Meta.genBuildable: CliPlugin
                         Transform.newSources(
                             packageText
                                 .file(
-                                    "${dataClass.name}Buildable",
+                                    dataClass.parentClasses.map { it.name }.joinToString("") +
+                                            "${dataClass.name}Buildable",
                                     "/generated/main/kotlin/${dataClass.pkg.replace('.','/')}"
                                 )
                         )
@@ -203,7 +204,7 @@ internal fun generatePartial(dataClass: DataClass, field: DataClassField): Prope
                     CodeBlock.builder()
                         .addStatement(
                             """
-                        |return object: Lens<Partial${dataClass.name}, ${field.typeName}?> {
+                        |return object: Lens<${dataClass.partialClassName}, ${field.typeName}?> {
                         |    ${generatePartialGet(dataClass, field)}
                         |    ${generatePartialPut(dataClass, field)}
                         |}
@@ -265,14 +266,14 @@ internal fun generateBuilderExtension(dataClass: DataClass): FunSpec =
             ClassName("", "BuildableBuilder")
                 .parameterizedBy(
                     dataClass.className,
-                    ClassName(dataClass.packageQualifier, "Partial${dataClass.name}")
+                    dataClass.partialClassName
                 )
         )
         .addCode(
             CodeBlock.builder()
                 .addStatement(
                     """
-                        return BuildableBuilder(${dataClass.name}Ctx)
+                        return BuildableBuilder(${dataClass.ctxClassName})
                     """.trimIndent()
                 )
                 .build()
@@ -293,7 +294,7 @@ internal fun generateBuildableExtension(dataClass: DataClass): FunSpec =
             CodeBlock.builder()
                 .addStatement(
                     """
-                        return ${dataClass.name}Ctx
+                        return ${dataClass.ctxClassName}
                     """.trimIndent()
                 )
                 .build()
@@ -392,7 +393,7 @@ internal fun generateBuildOperation(dataClass: DataClass): FunSpec =
 
 /** Given a data class, generate it's ctx class. */
 internal fun generateCtx(dataClass: DataClass): TypeSpec =
-    TypeSpec.objectBuilder("${dataClass.name}Ctx")
+    TypeSpec.objectBuilder("${dataClass.ctxClassName}")
         .addSuperinterface(
             ClassName("", "Buildable.Ctx")
                 .parameterizedBy(
@@ -446,7 +447,7 @@ internal fun generateAsPartial(dataClass: DataClass): FunSpec =
             CodeBlock.builder()
                 .addStatement(
                     """
-                        |return Partial${dataClass.name}(
+                        |return ${dataClass.partialClassName}(
                         |    ${dataClass.fields.map { it.name }.joinToString(",")}
                         |)
                     """.trimMargin()

@@ -96,7 +96,16 @@ internal val DataClass.className: ClassName
     get() = ClassName("$packageQualifier.$classQualifier", name)
 
 internal val DataClass.partialClassName: ClassName
-    get() = ClassName(packageQualifier, "Partial$name")
+    get() = ClassName(packageQualifier, partialName)
+
+internal val DataClass.ctxClassName: ClassName
+    get() = ClassName(
+        "",
+        "${parentClasses.map { it.name }.joinToString("")}${name}Ctx"
+    )
 
 internal val DataClass.unqualifiedPartialClassName: ClassName
-    get() = ClassName("", "Partial$name")
+    get() = ClassName("", partialName)
+
+private val DataClass.partialName: String
+    get() = "Partial${parentClasses.map { it.name }.joinToString("")}$name"
